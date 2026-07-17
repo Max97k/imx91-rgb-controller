@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>i.MX 91S RGB Controller</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #07070f;
+      --surface:  rgba(255,255,255,0.04);
+      --border:   rgba(255,255,255,0.08);
+      --text:     #e8e8f0;
+      --muted:    #6b6b88;
+      --accent:   #7c6af7;
+      --green:    #34d399;
+      --red:      #f87171;
+      --amber:    #fbbf24;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px 16px;
+      background-image:
+        radial-gradient(ellipse 80% 60% at 50% -20%, rgba(124,106,247,0.18) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 80%,  rgba(56,189,248,0.08) 0%, transparent 50%);
+    }
+
+    .container { max-width: 960px; margin: 0 auto; }
+
+    /* ── Header ── */
+    .header {
+      display: flex; align-items: center; gap: 16px;
+      margin-bottom: 32px;
+    }
+    .header-icon {
+      width: 48px; height: 48px; border-radius: 14px;
+      background: linear-gradient(135deg, #7c6af7, #38bdf8);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; flex-shrink: 0;
+      box-shadow: 0 0 24px rgba(124,106,247,0.4);
+    }
+    .header h1 { font-size: 1.4rem; font-weight: 600; letter-spacing: -.3px; }
+    .header p  { font-size: .8rem; color: var(--muted); margin-top: 2px; }
+    .badge {
+      margin-left: auto; padding: 4px 12px; border-radius: 99px;
+      font-size: .72rem; font-weight: 600; letter-spacing: .5px;
+      border: 1px solid var(--border);
+    }
+    .badge.online  { background: rgba(52,211,153,.12); color: var(--green); border-color: rgba(52,211,153,.25); }
+    .badge.offline { background: rgba(248,113,113,.12); color: var(--red);   border-color: rgba(248,113,113,.25); }
+
+    /* ── Grid ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      backdrop-filter: blur(12px);
+      transition: border-color .3s;
+    }
+    .card:hover { border-color: rgba(255,255,255,0.14); }
+    .card-title {
+      font-size: .72rem; font-weight: 600; letter-spacing: 1px;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 20px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-title::before {
+      content: ''; width: 3px; height: 14px;
+      background: var(--accent); border-radius: 2px; display: block;
+    }
+
+    /* ── LED preview ── */
+    .led-wrap {
+      display: flex; flex-direction: column; align-items: center; gap: 20px;
+    }
+    .led-orb {
+      width: 120px; height: 120px; border-radius: 50%;
+      background: rgb(255,255,255);
+      box-shadow: 0 0 60px 20px rgba(255,255,255,0.5), 0 0 120px 40px rgba(255,255,255,0.2);
+      transition: background .4s ease, box-shadow .4s ease;
+    }
+    .led-orb.off {
+      background: rgba(255,255,255,0.05) !important;
+      box-shadow: none !important;
+    }
+    .led-info {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+    }
+    .led-hex  { font-size: 1.5rem; font-weight: 700; letter-spacing: 2px; }
+    .led-rgb  { font-size: .78rem; color: var(--muted); }
+    .power-badge {
+      padding: 4px 16px; border-radius: 99px; font-size: .78rem; font-weight: 600;
+      margin-top: 4px;
+    }
+    .power-badge.on  { background: rgba(52,211,153,.15); color: var(--green); }
+    .power-badge.off { background: rgba(107,107,136,.15); color: var(--muted); }
+
+    /* ── Slider row ── */
+    .slider-row { margin-bottom: 16px; }
+    .slider-label {
+      display: flex; justify-content: space-between;
+      font-size: .78rem; color: var(--muted); margin-bottom: 6px;
+    }
+    .slider-label span:last-child { color: var(--text); font-weight: 500; }
+    .slider-track {
+      width: 100%; height: 8px; border-radius: 99px;
+      background: rgba(255,255,255,0.06); overflow: hidden;
+    }
+    .slider-fill {
+      height: 100%; border-radius: 99px;
+      transition: width .4s ease, background .4s ease;
+    }
+
+    /* ── Matter status ── */
+    .matter-status {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+    }
+    .status-dot {
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    }
+    .status-dot.paired   { background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 2s infinite; }
+    .status-dot.waiting  { background: var(--amber); box-shadow: 0 0 8px var(--amber); animation: pulse 2s infinite; }
+    @keyframes pulse {
+      0%,100% { opacity: 1; } 50% { opacity: .4; }
+    }
+    .matter-label { font-size: .88rem; }
+    .matter-label small { display: block; font-size: .72rem; color: var(--muted); margin-top: 2px; }
+    .qr-placeholder {
+      width: 100%; aspect-ratio: 1;
+      max-width: 160px; margin: 0 auto;
+      background: white; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .7rem; color: #333; text-align: center; padding: 12px;
+    }
+
+    /* ── Stat row ── */
+    .stat-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 0; border-bottom: 1px solid var(--border);
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-label { font-size: .8rem; color: var(--muted); }
+    .stat-value { font-size: .88rem; font-weight: 500; }
+
+    /* ── Memory bar ── */
+    .mem-bar-track {
+      width: 100%; height: 6px; border-radius: 99px;
+      background: rgba(255,255,255,0.06); margin-top: 8px; overflow: hidden;
+    }
+    .mem-bar-fill {
+      height: 100%; border-radius: 99px;
+      background: linear-gradient(90deg, var(--accent), #38bdf8);
+      transition: width .6s ease;
+    }
+
+    .footer {
+      text-align: center; margin-top: 32px;
+      font-size: .72rem; color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-icon">💡</div>
+    <div>
+      <h1>RGB LED Controller</h1>
+      <p>NXP FRDM i.MX 91S · Matter over Wi-Fi</p>
+    </div>
+    <span class="badge online" id="conn-badge">● LIVE</span>
+  </div>
+
+  <div class="grid">
+
+    <!-- LED Preview -->
+    <div class="card">
+      <div class="card-title">LED Status</div>
+      <div class="led-wrap">
+        <div class="led-orb off" id="led-orb"></div>
+        <div class="led-info">
+          <div class="led-hex" id="led-hex">#FFFFFF</div>
+          <div class="led-rgb" id="led-rgb">R:255 G:255 B:255</div>
+          <div class="power-badge off" id="power-badge">OFF</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Light Settings -->
+    <div class="card">
+      <div class="card-title">Light Settings</div>
+
+      <div class="slider-row">
+        <div class="slider-label"><span>Brightness</span><span id="val-brightness">100%</span></div>
+        <div class="slider-track"><div class="slider-fill" id="bar-brightness" style="width:100%;background:#e8e8f0;"></div></div>
+      </div>
+
+      <div class="slider-row">
+        <div class="slider-label"><span>Hue</span><span id="val-hue">0°</span></div>
+        <div class="slider-track">
+          <div class="slider-fill" id="bar-hue" style="width:0%;background:linear-gradient(90deg,red,yellow,lime,cyan,blue,magenta,red);width:100%;"></div>
+        </div>
+      </div>
+
+      <div class="slider-row" style="margin-bottom:0;">
+        <div class="slider-label"><span>Saturation</span><span id="val-saturation">0%</span></div>
+        <div class="slider-track"><div class="slider-fill" id="bar-saturation" style="width:0%;background:#7c6af7;"></div></div>
+      </div>
+    </div>
+
+    <!-- Matter Status -->
+    <div class="card">
+      <div class="card-title">Matter Pairing</div>
+      <div class="matter-status">
+        <div class="status-dot waiting" id="matter-dot"></div>
+        <div class="matter-label">
+          <span id="matter-label-text">Waiting for pairing...</span>
+          <small id="matter-label-sub">Open Google Home → Add device → Matter</small>
+        </div>
+      </div>
+      <div id="qr-box" style="text-align:center;margin-top:4px;">
+        <div id="qr-waiting" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:24px;font-size:.8rem;color:var(--muted);">
+          ⏳ Generating QR Code...
+        </div>
+        <div id="qr-ready" style="display:none;">
+          <a id="qr-link" href="#" target="_blank"
+             style="display:inline-block;background:white;padding:12px;border-radius:12px;margin-bottom:12px;">
+            <img id="qr-img" src="" alt="Matter QR Code" width="140" height="140" />
+          </a>
+          <div style="font-size:.72rem;color:var(--muted);margin-bottom:6px;">Manual code:</div>
+          <div id="manual-code" style="font-family:monospace;font-size:1rem;font-weight:700;letter-spacing:2px;color:var(--text);">—</div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:8px;">Tap the QR image to open it in browser</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- System Stats -->
+    <div class="card">
+      <div class="card-title">System Stats</div>
+      <div class="stat-row">
+        <span class="stat-label">Board</span>
+        <span class="stat-value">FRDM i.MX 91S</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Board Uptime</span>
+        <span class="stat-value" id="stat-uptime">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">App Uptime</span>
+        <span class="stat-value" id="stat-app-uptime">—</span>
+      </div>
+      <div class="stat-row" style="flex-direction:column;align-items:flex-start;gap:4px;">
+        <div style="display:flex;justify-content:space-between;width:100%;">
+          <span class="stat-label">Memory</span>
+          <span class="stat-value" id="stat-mem">—</span>
+        </div>
+        <div class="mem-bar-track" style="width:100%;">
+          <div class="mem-bar-fill" id="mem-bar" style="width:0%;"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /grid -->
+
+  <div class="footer">
+    Auto-refreshes via SSE · <span id="last-update">connecting…</span>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+  function toHex(r,g,b){return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();}
+  function fmtUptime(s){const d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60);return`${d}d ${h}h ${m}m`;}
+
+  function applyState(d){
+    const {power, brightness, hue, saturation, colorRgb, matterPaired} = d;
+    const orb = document.getElementById('led-orb');
+    const rgb = colorRgb || {r:255,g:255,b:255};
+    const hex = toHex(rgb.r, rgb.g, rgb.b);
+    const rgbStr = `rgb(${rgb.r},${rgb.g},${rgb.b})`;
+
+    orb.style.background = rgbStr;
+    if(power){
+      orb.classList.remove('off');
+      orb.style.boxShadow = `0 0 60px 20px ${rgbStr.replace(')',', 0.6)')}, 0 0 120px 40px ${rgbStr.replace(')',', 0.25)')}`;
+    } else {
+      orb.classList.add('off');
+      orb.style.boxShadow = '';
+    }
+    document.getElementById('led-hex').textContent = power ? hex : '#000000';
+    document.getElementById('led-rgb').textContent = power ? `R:${rgb.r} G:${rgb.g} B:${rgb.b}` : 'LED OFF';
+
+    const pb = document.getElementById('power-badge');
+    pb.textContent = power ? 'ON' : 'OFF';
+    pb.className = 'power-badge ' + (power ? 'on' : 'off');
+
+    const bPct = Math.round(brightness / 254 * 100);
+    document.getElementById('val-brightness').textContent = bPct + '%';
+    document.getElementById('bar-brightness').style.width = bPct + '%';
+
+    const hDeg = Math.round(hue / 254 * 360);
+    document.getElementById('val-hue').textContent = hDeg + '°';
+    document.getElementById('bar-hue').style.width = (hue / 254 * 100) + '%';
+
+    const sPct = Math.round(saturation / 254 * 100);
+    document.getElementById('val-saturation').textContent = sPct + '%';
+    document.getElementById('bar-saturation').style.width = sPct + '%';
+
+    const dot = document.getElementById('matter-dot');
+    const lbl = document.getElementById('matter-label-text');
+    if(matterPaired){
+      dot.className = 'status-dot paired';
+      lbl.textContent = 'Paired with Google Home ✓';
+    } else {
+      dot.className = 'status-dot waiting';
+      lbl.textContent = 'Waiting for pairing…';
+    }
+
+    if(d.appUptimeSec !== undefined)
+      document.getElementById('stat-app-uptime').textContent = fmtUptime(d.appUptimeSec);
+
+    document.getElementById('last-update').textContent = 'Last update: ' + new Date().toLocaleTimeString();
+  }
+
+  function applyStats(d){
+    if(d.system){
+      const s = d.system;
+      document.getElementById('stat-uptime').textContent = s.uptimeStr || s.uptimeSec && fmtUptime(s.uptimeSec) || '—';
+      const pct = s.memTotalMb ? Math.round(s.memUsedMb/s.memTotalMb*100) : 0;
+      document.getElementById('stat-mem').textContent = `${s.memUsedMb}MB / ${s.memTotalMb}MB (${pct}%)`;
+      document.getElementById('mem-bar').style.width = pct + '%';
+    }
+    if(d.appUptimeSec !== undefined)
+      document.getElementById('stat-app-uptime').textContent = fmtUptime(d.appUptimeSec);
+    document.getElementById('last-update').textContent = 'Last update: ' + new Date().toLocaleTimeString();
+  }
+
+  // SSE connection
+  function connect(){
+    const badge = document.getElementById('conn-badge');
+    const es = new EventSource('/events');
+    es.onopen = () => { badge.textContent = '● LIVE'; badge.className = 'badge online'; };
+    es.onmessage = e => {
+      const d = JSON.parse(e.data);
+      if(d.type === 'init' || d.type === 'state') applyState(d);
+      if(d.type === 'stats') applyStats(d);
+      if(d.type === 'qr' || d.matterQrCode) applyQr({
+        qrCode: d.qrCode || d.matterQrCode,
+        manualCode: d.manualCode || d.matterManualCode,
+        qrUrl: d.qrUrl
+      });
+    };
+    es.onerror = () => {
+      badge.textContent = '○ OFFLINE';
+      badge.className = 'badge offline';
+      es.close();
+      setTimeout(connect, 3000);
+    };
+  }
+  connect();
+
+  function applyQr(d) {
+    if (!d.qrCode) return;
+    document.getElementById('qr-waiting').style.display = 'none';
+    document.getElementById('qr-ready').style.display = 'block';
+    const qrUrl = d.qrUrl || `https://project-chip.github.io/connectedhomeip/qrcode.html?data=${encodeURIComponent(d.qrCode)}`;
+    // Use QR code generator API
+    const imgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(d.qrCode)}`;
+    document.getElementById('qr-img').src = imgSrc;
+    document.getElementById('qr-link').href = qrUrl;
+    document.getElementById('manual-code').textContent = d.manualCode || '—';
+    // Update matter status
+    document.getElementById('matter-label-text').textContent = 'Scan QR to pair with Google Home';
+    document.getElementById('matter-label-sub').textContent = 'Open Google Home → + → Set up device → Matter';
+  }
+</script>
+</body>
+</html>
