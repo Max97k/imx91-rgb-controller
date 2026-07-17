@@ -1,0 +1,22 @@
+{
+  "name": "imx91-rgb-controller",
+  "version": "1.0.0",
+  "description": "Matter-based RGB LED controller running on NXP FRDM i.MX 91S",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@project-chip/matter-node.js": "^0.8.0",
+    "@project-chip/matter.js": "^0.8.0"
+  },
+  "keywords": [
+    "matter",
+    "smart-home",
+    "imx91",
+    "rgb-led"
+  ],
+  "author": "",
+  "license": "MIT"
+}
