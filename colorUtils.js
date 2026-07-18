@@ -4,6 +4,6 @@ export function rgbToRgbw(r, g, b) {
     r: r - w,
     g: g - w,
     b: b - w,
-    w: w
+    w: w,
   };
 }

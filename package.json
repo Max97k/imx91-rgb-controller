@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "@project-chip/matter-node.js": "^0.8.0",
-    "@project-chip/matter.js": "^0.8.0"
+    "@project-chip/matter.js": "^0.8.0",
+    "winston": "^3.19.0"
   },
   "keywords": [
     "matter",
