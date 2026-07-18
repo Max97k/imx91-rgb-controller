@@ -9,8 +9,11 @@ import { StorageBackendMemory } from '@project-chip/matter-node.js/storage';
 import { StorageManager }       from '@project-chip/matter.js/storage';
 import { CommissioningServer }  from '@project-chip/matter.js';
 import { ExtendedColorLightDevice } from '@project-chip/matter-node.js/device';
+import { SpiController } from './spiController.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const spiController = new SpiController();
 
 // ─────────────────────────────────────────────
 // Shared device state
@@ -154,8 +157,7 @@ async function setupMatter() {
 // ─────────────────────────────────────────────
 function applyGpio() {
   const { r, g, b } = state.colorRgb;
-  console.log(`[GPIO] RGB → (${r}, ${g}, ${b})`);
-  // TODO: write to /sys/class/pwm/pwmchip0/pwm0/duty_cycle etc.
+  spiController.updateLeds(r, g, b, 0);
 }
 
 // ─────────────────────────────────────────────
