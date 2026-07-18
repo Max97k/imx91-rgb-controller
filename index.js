@@ -208,6 +208,10 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ...stateSnapshot(), system: stats }));
 
+  } else if (pathname === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'OK', uptime: process.uptime() }));
+
   } else { res.writeHead(404); res.end('Not found'); }
 });
 
